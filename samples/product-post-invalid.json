@@ -1,0 +1,6 @@
+{
+  "id": "product-invalid-price",
+  "name": "Invalid Price Example",
+  "pricePence": -1,
+  "description": "A synthetic product with a negative price for validation."
+}
