@@ -4,13 +4,13 @@ import {
 } from './product-updated-notifier';
 import { Product, createProduct, CreateProductParams } from '../domain/product';
 import { ProductRepo } from '../domain/product-repo';
-import { Logger } from './logger';
+import { Telemetry } from './telemetry';
 
 export type UpsertProductDeps = {
   productRepo: ProductRepo;
   now: () => Date;
   productUpdatedNotifier: ProductUpdatedNotifier;
-  logger: Logger;
+  telemetry: Telemetry;
 };
 
 export type UpsertProductCommand = {
@@ -45,7 +45,7 @@ export async function upsertProduct(
       updatedAt: now(),
     });
 
-    deps.logger.info(
+    deps.telemetry.info(
       `Upserting product with id: ${
         product.id
       } at ${product.updatedAt.toISOString()}`
@@ -54,11 +54,11 @@ export async function upsertProduct(
     // Save (upsert) the product
     const savedProduct = await productRepo.save(product);
 
-    deps.logger.info(`Product upserted with id: ${savedProduct.id}`);
-    deps.logger.debug(
+    deps.telemetry.info(`Product upserted with id: ${savedProduct.id}`);
+    deps.telemetry.debug(
       `Upserted product details: ${JSON.stringify(savedProduct)}`
     );
-    deps.logger.info(`Notifying product updated for id: ${savedProduct.id}`);
+    deps.telemetry.info(`Notifying product updated for id: ${savedProduct.id}`);
 
     // Notify about the product update
     const dto: ProductUpdatedDto = {
@@ -70,12 +70,15 @@ export async function upsertProduct(
     };
     await deps.productUpdatedNotifier.notifyProductUpdated(dto);
 
-    deps.logger.info(
+    deps.telemetry.info(
       `Product updated notification sent for id: ${savedProduct.id}`
     );
 
     return { success: true, data: savedProduct };
   } catch (error) {
+    deps.telemetry.error(
+      `Error upserting product ${command.id}: ${(error as Error).message}`
+    );
     return { success: false, error: (error as Error).message };
   }
 }

@@ -28,7 +28,26 @@ cp local.settings.template.json local.settings.json
 
 > **Note:** Never commit your `local.settings.json` to source control. The template is safe to share.
 
-3. Build the project:
+3. (Optional) Configure Application Insights:
+
+   To enable Application Insights telemetry, add your connection string to `local.settings.json`:
+
+   ```json
+   {
+     "IsEncrypted": false,
+     "Values": {
+       "FUNCTIONS_WORKER_RUNTIME": "node",
+       "PRODUCT_UPDATED_BASE_URL": "",
+       "APPLICATIONINSIGHTS_CONNECTION_STRING": "InstrumentationKey=00000000-0000-0000-0000-000000000000;IngestionEndpoint=https://..."
+     }
+   }
+   ```
+
+   If `APPLICATIONINSIGHTS_CONNECTION_STRING` is not set or is empty, the app will use console logging instead.
+
+   You can find your connection string in the Azure Portal under your Application Insights resource > Overview > Connection String.
+
+4. Build the project:
 
 ```bash
 npm run build
