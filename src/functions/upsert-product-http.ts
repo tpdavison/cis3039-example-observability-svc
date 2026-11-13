@@ -1,5 +1,9 @@
 import { app } from '@azure/functions';
-import type { HttpRequest, HttpResponseInit } from '@azure/functions';
+import type {
+  HttpRequest,
+  HttpResponseInit,
+  InvocationContext,
+} from '@azure/functions';
 import { upsertProduct } from '../app/upsert-product';
 import type { UpsertProductCommand } from '../app/upsert-product';
 import { createUpsertProductDeps } from '../config/composition-root';
@@ -62,7 +66,9 @@ function parseCommand(body: unknown): ParseResult {
 
 const upsertProductHandler = async (
   request: HttpRequest,
+  context: InvocationContext,
 ): Promise<HttpResponseInit> => {
+  let stage = 'request-parsing';
   try {
     let body: unknown;
     try {
@@ -78,6 +84,7 @@ const upsertProductHandler = async (
       };
     }
 
+    stage = 'request-validation';
     const parsed = parseCommand(body);
     if (!parsed.success) {
       return {
@@ -90,9 +97,12 @@ const upsertProductHandler = async (
       };
     }
 
+    stage = 'dependency-construction';
     const deps = createUpsertProductDeps();
+    stage = 'use-case-execution';
     const result = await upsertProduct(deps, parsed.data);
 
+    stage = 'response-mapping';
     if (!result.success) {
       return {
         status: 400,
@@ -114,7 +124,23 @@ const upsertProductHandler = async (
         updatedAt: result.data.updatedAt.toISOString(),
       },
     };
-  } catch {
+  } catch (error: unknown) {
+    context.error(
+      JSON.stringify({
+        operation: 'upsert-product',
+        outcome: 'failure',
+        stage,
+        exceptionType: error instanceof Error ? error.name : 'NonErrorThrown',
+        // Keep stack frames, excluding messages that could contain input or secrets.
+        stack:
+          error instanceof Error
+            ? error.stack
+                ?.split('\n')
+                .filter((line) => /^\s+at /.test(line))
+                .join('\n')
+            : undefined,
+      }),
+    );
     return {
       status: 500,
       jsonBody: {
