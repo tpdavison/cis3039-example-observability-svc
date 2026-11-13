@@ -17,7 +17,7 @@ const listProductsHandler = async (
     stage = 'use-case-execution';
     const result = await listProducts(deps);
     stage = 'response-mapping';
-    return {
+    const response: HttpResponseInit = {
       status: 200,
       jsonBody: result.data.map((product) => ({
         id: product.id,
@@ -27,6 +27,16 @@ const listProductsHandler = async (
         updatedAt: product.updatedAt.toISOString(),
       })),
     };
+    stage = 'success-logging';
+    // Log JSON for field extraction with parse_json(Message) in AppTraces.
+    context.info(
+      JSON.stringify({
+        operation: 'list-products',
+        outcome: 'success',
+        recordCount: result.data.length,
+      }),
+    );
+    return response;
   } catch (error: unknown) {
     context.error(
       JSON.stringify({
